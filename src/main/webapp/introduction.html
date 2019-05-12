@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Introduction</title>
+
+    <!-- Bootstrap -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="antixss.js" type="text/javascript"></script>
+
+  
+
+</head>
+
+<body>
+    <div class="container" id="container">
+		<h1>Introducing Kubernetes</h1>
+		<di id='kube-intro'>
+			<p>
+				Development is moving away from monolithic applications where a delay in a single element could mean missing a release deadline and is being replaced with developing a series of microservices, where each element can be developed in isolation removing roadblocks to releases. To facilitate this model of development a containerized solution is necessary. In the past  monolithic apps were deployed to a host, using the hosts operating system's packet manager which tied it to the underlying hardware resulting in heavy and non portable solutions. With containerization the app and its necessary libraries and dependencies are bundled into a lightweight container and are deployed to a host using <strong>operating system virtualization</strong> so all containers are isolated from each other, the host machine's file system and hardware.<br/>
+				<img src="images/why_containers.svg" width='50%' height='50%' id='containerImg'/><span id='reference'> From <a href='https://kubernetes.io/docs/concepts/overview/what-is-kubernetes/' target='_blank'>Kubernetes Docs</a></span><br/>
+                <ul>
+    				<li>Kubernetes is the defacto platform for container orchestration. </li>
+    				<li>Kubernetes is an open-sourced project released in 2014 and written in <strong>Go</strong>.</li>
+    				<li>It is a portable platform for managing containerized workloads and services.</li>
+    				<li>Kubernetes orchestrates computing, networking, and storage infrastructure. </li>
+    				<li>Kubernetes has been designed as a platform that can be configured and extended to suit the user/organization needs. </li>
+    				<li>The same API is available to developers and users to create their own components such as schedulers, controllers etc.</li>
+                    <li>Kubernetes can be thought of as a microservices platform, a portable cloud platform and a container platform among others.</li>
+                    <li>Kubernetes is not a Continuous Delivery solution so you cannot deploy source code and expect Kubernetes to build and deploy it.</li>
+                    <li>Kubernetes does not have a storage solution as a built-in service, but can be extended to include storage plugins.</li>
+                </ul>
+
+			</p>
+            <button type="button" class="btn btn-primary" id="checkpoint1">CHECKPOINT</button>
+		</div>
+	</div>
+    <script type="text/javascript">
+        $( document ).ready(function() {
+        $('#checkpoint1').on('click', function() {
+            $(location).attr('href', 'checkpoint1.html');
+            });
+    });
+    </script>
+</body>
+</html>

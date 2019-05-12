@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Authentication and Authorization</title>
+
+    <!-- Bootstrap -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="antixss.js" type="text/javascript"></script>
+
+  
+
+</head>
+
+<body>
+    <div class="container" id="container">
+		<h1>Authentication and Authorization</h1>
+		<div id='kube-auth'>
+            <h2>Authentication</h2>
+			<p>
+				When the Kubernetes API-Server is contacted by any of the clients such as the kubectl, kubelet, scheduler etc. it must verify that they are who they say they are and check they have the correct permissions to carry out the operation they have requested. The sequence of these tasks are:<br/>
+               <strong> Authentication --> Authorization --> Admission Control</strong><br/>
+            </p>
+             <p>
+                <img src="images/authn.png" width='30%' height='30%' id='containerImg'/><span id='reference'> From <a href='https://learning.oreilly.com/library/view/kubernetes-security/9781492039075/ch03.html' target='_blank'>Kubernetes Security</a></span><br/>
+            </p>
+            <p>
+                The client presents its credentials to the API server.<br/>
+                The API server uses one of the authentication plug-ins  to establish the identity with an identity provider.<br/>
+                The identity provider verifies the request information, including username and group membership.<br/>
+                If the credentials are in order, the API server moves on to check permissions (Authorization)
+            </p>
+
+            <p>
+                Kubernetes API does not have a user object - Users are strings associated with a request: <br/>
+                Username: "John"<br/>
+                Group: "Developer"<br/>
+                This makes the authentication process difficult to understand for users new to Kubernetes. The Kubernetes API-Server needs to authenticate the clients it communicates with. There are several plugins available:
+                <ul>
+                    <li>x509 certification authentication</li>
+                    <li>Bearer tokens webhooks</li>
+                    <li>Static Password files</li>
+                    <li>others</li>
+                </ul>
+                The most common authentication approach taken is to use client certs by passing the flag --client-ca-file=ca.pem (if you use kubeadm to spin up a cluster this is the approach taken).If we ssh in to a node and navigate to the <em>/etc/kubernetes/pki</em> directory where the certs are stored we can look at a client cert. All certs are signed by the Cluster Certificate Authority. The subject field Common Name (CN) value is treated as the username and the Organization (O) value is treated as the group. The image below has pulled the cert from the kubelets client cert. Once the API-Server has established it is a valid certificate it pulls out the user and group names and uses them later to create policies at the authorization phase
+            </p>
+                 <p>
+				<img src="images/cert.png" width='50%' height='50%' id='certImg'/>
+            </p>
+            <p>
+                Another less used plug in available is the Bearer token webhook. A base64 Basic authorization header is passed with the request.<br/>
+                 <em>"Bearer: Authorization (token)"</em> <br/>
+                In this case when the kubectl (or other client) sends request to the API-Server and the API-Server is configured to listen for a webhook request it sends the request for authentication off to another service which will validate the credentials in the token. <br/>
+
+                Whether you use, client certificates, tokens, webhooks or a static file on disk to authenticate your users, none of these approaches are configurable in the Kubernetes API, these are authentication plugins that can be used with Kubernetes but authentication happens externally to Kubernetes.
+            </p>
+            <p>
+                <em>The following kubectl commands can be run from a terminal or command prompt</em><br/>
+                The only credentials that are managed by the Kubernetes API are from the Service Account objects, in the form of a signed JWT token.
+                When you create a Service account object a secret is created. <br/>
+                Running the command:<br/>
+                 <em>kubectl create serviceaccount myserviceaccount</em><br/>
+                 creates a Service Account object<br/>
+                We can view the Service Account yaml file with -<br/> <em>kubectl get serviceaccount myserviceaccount -o yaml</em> <br/>
+                and see the secret has been created.	
+			</p>
+            <p>
+                <img src="images/sa.png" width='50%' height='50%' id='saImg'/>
+            </p>
+            <p>
+               Using the name of the secret, it can be examined with the command:<br/>
+                <em>kubectl get secrets myserviceaccount-token-xxxx -o yaml</em><br/>
+                 The token that is produced is a base64 encoded JWT token which has been signed by the API-server. Once the base64 encoding has been <a href="https://www.base64decode.org/" target="_blank">decoded</a> the JWT token can be decoded trivially <a href='https://jwt.io' target='_blank'>online</a> and reveals information about the issuer, service account, namespace and secret name. <br/>
+                 The token can also be retrieved with:
+                 <em>kubectl describe secret myserviceaccount-token-xxxx</em>
+                 This token can be used to authenticate with the API-Server, so care should be taken who is given access to the service accounts because anyone with access to the token can access the API-Server, authenticating as the service account from outside of the cluster.<br/>
+               Once a service account has been created it can be associated with any pod running in the namespace, by adding the service account to a deployment yaml file at template.spec.serviveAccountName as shown below.<br/>
+               <img src="images/deploy.png" width='25%' height='25%' id='deployImg'/><br/>
+               When the pod is created the secrets are mounted to the pod and used to authenticate with the API-Server. If you do not specify a service account when creating a pod the default service account will be used. <br/>
+                The secrets token, ca.crt and namespace can be found in the pod file system at <em>/var/run/secrets/kubernetes.io/serviceaccount</em>.
+                
+
+
+            </p>
+		</div>
+        <div id='kube-author'>
+            <h2>Authorization and Access Control</h2>
+            <p>
+                 The Roles Based Access Control (RBAC) API is most commonly used form of authorization. An RBAC policy contains subject, verb, resource and namespace, so can be thought of as "Can subject verb resource in namespace" - <br/>
+                <em>Can developer create pods in the default namespace</em><br/>
+                If authorization is successful it passes to the Admission Control phase.<strong> There are more than 30 controllers which are used to enforce policies before the API-Server is permitted to persist to the etcd data-store, for example during this phase the incoming request is checked to ensure that it does not violate any of the constraints enumerated in the ResourceQuota object in each namespace, which helps to combat denial-of-service attacks.</strong>
+            </p>
+                <p>
+                    <img src="images/auth.png" width='50%' height='50%' id='containerImg'/><span id='reference'> From <a href='https://learning.oreilly.com/library/view/kubernetes-security/9781492039075/ch04.html' target='_blank'>Kubernetes Security</a></span><br/>
+                </p>
+                <p>
+                    The client’s request is authenticated. <br/>
+                    If successful, the credentials are taken as one input of the authorization module.<br/>
+                    The second input to the authorization module is a vector containing the request path, resource, verb, and namespace (and other secondary attributes).<br/>
+                    If the user or application is permitted to execute a certain action on a certain resource, the request is passed on further to the next component in the chain, the admission controller. If not, the authorization module returns an HTTP 403 Forbidden client error status response code, and with that the request fails.<br/>
+                </p>
+                Policies are made up of several parts.<br/>
+                <ul>
+                    <li>Entity</li>
+                    <ul>
+                        <li>
+                            User, Group or Service Account.
+                        </li>
+                    </ul>
+                    <li>Resource</li>
+                    <ul>
+                        <li>Pods, secrets, service accessed by entity.</li>
+                    </ul>
+                    <li>Roles</li>
+                    <ul>
+                        <li>Roles declare a set of permissions</li>
+                        <ul>
+                            <li>Role - scoped to a namespace</li>
+                            <li>ClusterRole - gives the permission clusterwide</li>
+                        </ul>
+                    </ul>
+                    <li>Bindings</li>
+                    <ul>
+                        <li>Bindings allow users or groups to have those permissions.</li>
+                        <ul>
+                            <li> RoleBinding - binds to a specific namespace</li>
+                            <li> ClusterRoleBinding - binds to the cluster</li>
+                        </ul>
+                    </ul>
+                </ul>
+                Role and RoleBindings objects are scoped to a specific namespace and ClusterRole and ClusterRolebindigs objects are cluster wide.<br/>
+                 No object in Kubernetes exists both inside and outside a namespace, so the distinctive definitions are needed. A Cluster Role can be bound using either Cluster Role Bindings or Role Bindings, which can be thought of as assigning global or local permission respectively. It can be convinient to create a Cluster Role for a Role binding if the role is to be reused. <strong>A Role can only be bound by a Role Binding.</strong><br/>
+                There are several default Cluster Roles that can be assigned:<br/>
+                <ul>
+                    <li><strong>Cluster-admin - equivalent to a super-user</strong></li>
+                    <li>admin - all permissions within a namespace </li>
+                    <li>edit - allows for create, update patch get watch list of resources within a namespace</li>
+                    <li>view - read only for resources except secrets in a namespace</li>
+                </ul>
+                The following example sets a role policy to read pods in the default namespace.
+                 
+
+            </p>
+            <p>
+                <img src="images/role.png" width='50%' height='50%' id='roleImg'/><span id='reference'> From <a href='https://kubernetes.io/docs/reference/access-authn-authz/rbac/' target='_blank'>Kubernetes RBAC</a></span><br/>
+            </p>
+            <p>This example sets the cluster role to read secrets, depending on the binding, it can be scoped to a single namespace using rolebinding or across all namespaces using a ClusterRoleBinding <br/>
+                <img src="images/clusterRole.png" width='50%' height='50%' id='clusterRoleImg'/><span id='reference'> From <a href='https://kubernetes.io/docs/reference/access-authn-authz/rbac/' target='_blank'>Kubernetes RBAC</a></span><br/>
+            </p>
+            <p>
+                This example shows that the Cluster Role has been scoped to the namespace <em>development</em> using RoleBinding. The subject filelds are populated from the credentials we gathered from the authentication phase.<br/>
+                <img src="images/clusterRoleBinding.png" width='50%' height='50%' id='clusterRoleImg'/><span id='reference'> From <a href='https://kubernetes.io/docs/reference/access-authn-authz/rbac/' target='_blank'>Kubernetes RBAC</a></span><br/>
+                To prevent privilege escalation Roles and Role bindings can only be created by someone with sufficient permissions. So a user with the admin role within a namespace would not be able to set a Cluster Role Binding policy outside of this namespace.
+            </p>
+            <button type="button" class="btn btn-primary" id="checkpoint3">CHECKPOINT</button>
+        </div>
+	</div>
+     <script type="text/javascript">
+        $( document ).ready(function() {
+        $('#checkpoint3').on('click', function() {
+            $(location).attr('href', 'checkpoint3.html');
+            });
+    });
+    </script>
+</body>
+</html>

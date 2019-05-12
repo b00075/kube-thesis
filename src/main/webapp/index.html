@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Disclaimer</title>
+
+    <!-- Bootstrap -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="antixss.js" type="text/javascript"></script>
+
+   
+
+</head>
+
+<body>
+    <div class="container" id="container">
+        <div>
+            <h2>Pre-requisites</h2>
+            <p>
+                <ul>
+                    <li>Download the three virtual machines and start them up (assumes you have Oracle Virtual Box installed) The Kubernetes cluster is running on the host only network adapter set to the 172.42.42.1/24 network. If the vm doesn't start check that you have this set. </li>
+                    <li>Root user/password = root:kubeadmin</li>
+                    <li>Standard user/password = vagrant:vagrant</li>
+                    <ul>
+                        <li><a href="https://mega.nz/#!f7wggYbB!pIlB9OXGpqdta4qGtsmH4G7tDvr4HvP3W8TwLJUU8DA" target="_blank">kmaster</a> - md5 checksum f29c29eb6883a916c3ed58fe1f267e12</li>
+                        <li><a href="https://mega.nz/#!ujwGEILS!B3Nw0oNf-70BL4i_AMSW36xag5yUBLHzAMgEtpGY57M" target="_blank">kworker1</a> - md5 checksum 831808a090ef393330e386bb4e0a1ab1</li>
+                        <li><a href="https://mega.nz/#!HiwGUQaL!xESZynx-NtGNBdPfoqIUU-sL4-ap4ipnWK8mpHO1Oik" target="_blank">kworker2</a> - md5 checksum fca6f53938857f020fbfc9590c69b8a4</li>
+                    </ul>
+                    <li>Use curl to download the correct Kubernetes command line tool for your OS</li>
+                    <ul>
+                        <li>Windows - <code>curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.0/bin/windows/amd64/kubectl.exe</code></li>
+                            <ul>
+                            <li>Add the binary to your PATH</li>
+                        </ul>
+                        <li>MacOS - <code>curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.0/bin/darwin/amd64/kubectl</code></li>
+                            <ul>
+                            <li>Make the binary executable - <code>chmod +x /kubectl</code></li>
+                            <li>Move the binary to your PATH - <code>mv /kubectl /usr/local/bin/kubectl</code></li>
+                        </ul>
+                        <li>Linux - <code>curl -LO https://storage.googleapis.com/kubernetes-release/release/v1.9.0/bin/linux/amd64/kubectl</code></li>
+                        <ul>
+                            <li>Make the binary executable - <code>chmod +x /kubectl</code></li>
+                            <li>Move the binary to your PATH - <code>mv /kubectl /usr/local/bin/kubectl</code></li>
+                        </ul>
+                    </ul>
+                    <li>Navigate to your home directory and create a new hidden folder .kube and create config file- <code> cd ~/ && mkdir .kube && cd .kube && touch config</code><br/> 
+                        Or on Windows:<br/>
+                         <code>mkdir .kube<br/> type nul > config</code></li>
+                    <li>ssh into kmaster and copy kubernetes config file </li>
+                    <ul>
+                        <li><code>ssh root@172.42.42.100</code> (password is kubeadmin)</li>
+                        <li>display the config file - <code> cat /etc/kubernetes/admin.conf </code></li>
+                        <li>copy contents and paste into config file created in the previous step on your local machine</li>
+                        <li>To ensure all is working open a terminal/command prompt and run <code>kubectl cluster-info</code></li>
+                        <li> You should recieve a response similair to the following: <br/>
+                            <code>Kubernetes master is running at https://172.42.42.100:6443<br/>
+                            KubeDNS is running at https://172.42.42.100:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy</code>
+                        </li>
+                    </ul>
+
+                 </ul>
+            </p>
+        </div>
+        <div id='disclaimer' style="border: black; padding: 2em">
+            <h1>Disclaimer</h1>
+            <p>The following framework consists of a pre-test, a post-test and 4 checkpoints. The answers of these will be collected and stored in a database. A time-stamp will also be collected on submission of the pre-test, post-test and 4 checkpoints. The data collected is for use in a thesis submission for Masters in Science in Applied Cyber Security, Technology University, Dublin (Blanchardstown). No personal information will be collected. You will be assigned an arbitary ID that can not identify you personally. You are free to exit the test at any point.<br/>
+                You must be at least 18 years old and work or be undertaking trainingin the Cyber Security field.<br/>
+                <strong>The techniques for exploiting vulnerabilities that are taught as part of this framework are for educational purposes only. They should not be used on a Kubernetes Cluster that you do not own or have explicit permission to test.</strong><br/>
+                <input type="checkbox" name="disclaimer" value="" id='disclaimer' checked='checked'><em>I have read this disclaimer and agree with the conditions.</em> </p>
+                <button type="button" class="btn btn-primary" id="topretest" >Enter</button>
+                <p id='response'></p>
+        </div>
+    </div>
+     <script>
+        $( document ).ready(function() {
+            var $topretest = $('#topretest');
+            $topretest.on('click', function(){
+                if($('input[name=disclaimer]').is(':checked')){
+                     $(location).attr('href', 'prettest.html');
+                }else{
+                     $('#response').html('<strong>You need to check the box to agree to the terms!</strong> ');
+                }
+            });
+        });
+     </script>
+
+</body>
+
+
+</html>
+
+
+

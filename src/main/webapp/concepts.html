@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Architecture</title>
+
+    <!-- Bootstrap -->
+    <link href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" rel="stylesheet">
+    <link href="styles.css" rel="stylesheet">
+    <!-- jQuery (necessary for Bootstrap's JavaScript plugins) -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <!-- Include all compiled plugins (below), or include individual files as needed -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js"></script>
+    <script src="antixss.js" type="text/javascript"></script>
+</head>
+
+<body>
+    <div class="container" id="container">
+		<h1>Kubernetes Architecture</h1>
+		<div id='kube-arch'>
+			<p>
+				It is important to understand Kubernetes Architecture whether you are a Kubernetes Administrator, developer or security tester. A Kubernetes cluster is a collection of nodes, known as workers controlled by a master node. In high availability production environments multiple master nodes should be used.<br/>
+                <h2>Master Node</h2>
+                The master node is known as the brain of the cluster. There are three core components in a master node, <strong>API-Server, Scheduler and the Controller-Manager</strong>. There is also a distributed key-value data-store which stores all the information about the cluster. This is often found on the master node but it is possible to have this outside of the cluster. <strong>Etcd is the data store</strong> that is supported by Kubernetes<br/>
+                <h3>API-Server</h3>
+                The API-Server is the main component of the cluster. All other components connect to and communicate through the API-Server. The API-Server is the only component which talks to the Etcd database. Communication to the API-Server is done through the Kubernetes CLI called<strong> kubectl </strong>or REST operations.<br/>
+                <h3>Scheduler</h3>
+                The job of the scheduler is to watch for unscheduled pods. When a pod has been created the API-server communicates the configurations to the scheduler which uses these configurations to decide which node to put the pod on to. The scheduler then reports back to the API-Server, which then writes these details to the Etcd.<br/>
+                <h3>Controller-Manager</h3>
+                The Controller-Manager is a daemon that embeds the controllers (control-loops). It watches the state of  the cluster through the API-Server watch machanism and when notified if there is any disparity between the desired and current states of pods attempts to move the current state of pods to the desired state.
+            </p>
+            <p>
+				<img src="images/k8s-arch.png" width='50%' height='50%' id='clusterImg'/><span id='reference'> From <a href='https://www.oreilly.com/library/view/containers-in-openstack/9781788394383/b40fe35b-c632-4592-a966-2efc53e32274.xhtml' target='_blank'>Containers in Open Stack</a></span><br/>
+            </p>
+            <p>
+				<h2>Worker Nodes</h2>
+                There are multiple worker nodes in a cluster. Curently Kubernetes supports up to 5000 nodes in a cluster. There are two main components in a worker node, The Kubelet and the kube-proxy. Also found on the worker node is the container runtime engine such as Docker or containerd. Each node its own IP addreess and a cidr range for pods on the node.<br/>
+                <h3>Kubelet</h3>  
+                The Kubelet is the main component of the worker nodes. It talks to the API-Server and reports the state of the pods. It runs health and readiness checks on the pods and reports any errors to the API-Server which in turn will communicate with the Controller-Manager or Scheduler<br/><h3>kube-proxy</h3>
+                The kube-proxy talks to the API-Server and gets the configurations and sets up rules using iptables, so when a user is accessing an application it is the kube-proxy that makes this poosible.<br/>
+                <h2>Container Network Interface</h2>
+                There are many providers for implementing Container Network Interface (CNI) Network. Basically it creates an internal network inside the cluster which follows three rules:<br/>
+                <ul>
+                    <li>All pods must be able to talk to all pods across the cluster</li>
+                    <li>All nodes must be able to talk to all pods across the cluster</li>
+                    <li>The IP address a pod sees itself as is the same IP address as everthing else sees it as</li>
+                </ul>
+                For security personel these default setting will raise alarm bells but network policies can be put in place to limit these default settings.
+                <h2>Pods</h2>
+                Pods are the <strong>smallest</strong> unit in the Kubernetes object model. Each pod is assigned its own IP address. A pod can contain a single container or multiple tightly-coupled containers.<br/>
+                <h2>Deployments</h2>
+                Deployments represent a set of multiple, identical Pods. A Deployment runs multiple replicas of your application and will replace any instances that fail. Deployments ensure that one or more instances of your application are available. Deployments are managed by the Kubernetes Deployment controller.
+                <h2>Services</h2>
+                Simply put, <strong>a service is a grouping of pods </strong>and a policy which determines how to access them. A label selector defined in the service definition targets any pods with the same label. The created service will be assigned an IP address and this is used by the kube-proxy when setting the rules for the iptable in relation to the service. 
+                <h2>Namespaces</h2>
+                Namespaces can be used to isolate a working environment, for example a namespace could be created for each department or an even more fine-grained approach would be to create one for each developer then access and specific permissions could be granted within the namespace.
+			</p>
+            <button type="button" class="btn btn-primary" id="checkpoint2">CHECKPOINT</button>
+		</div>
+	</div>
+    <script type="text/javascript">
+        $( document ).ready(function() {
+        $('#checkpoint2').on('click', function() {
+            $(location).attr('href', 'checkpoint2.html');
+            });
+    });
+    </script>
+</body>
+</html>
