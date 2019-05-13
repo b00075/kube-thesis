@@ -97,6 +97,7 @@ public class QuestionAPI extends Application {
     
    
     @POST
+    @Path("/")
     @Produces("application/text")
     @Consumes("application/json")
     public String newToDo(Question ques) {
